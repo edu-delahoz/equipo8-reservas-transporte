@@ -1,0 +1,257 @@
+openapi: 3.0.3
+info:
+  title: API de Reservas de Transporte (tipo Uber) — Equipo 8
+  version: "2.0"
+  description: |
+    API RESTful para consultar y registrar reservas de transporte.
+
+    * **Versionamiento por Custom Request Header**: envíe `X-API-Version: 1` o `X-API-Version: 2`.
+      Si se omite se usa la versión 1. Una versión desconocida responde **400**.
+      La respuesta incluye `X-API-Version` y `Vary: X-API-Version`.
+    * **HATEOAS** con formato HAL (`_links`, `_embedded`). Las acciones posibles sobre una reserva
+      (`confirmar`, `cancelar`, `iniciar-viaje`…) aparecen como enlaces según su estado.
+    * **Paginación** con `page` (desde 1) y `size` (1–50) y enlaces `first`, `prev`, `next`, `last`.
+    * **Caché Redis**: el header `X-Cache` indica `HIT` o `MISS`.
+    * Errores en formato **Problem Details** (`application/problem+json`).
+servers:
+  - url: http://localhost:8080
+    description: A través del frontend (nginx)
+  - url: http://localhost:3000
+    description: API directa
+tags:
+  - name: Reservas
+  - name: Vehículos
+  - name: Raíz
+paths:
+  /api:
+    get:
+      tags: [Raíz]
+      summary: Punto de entrada HATEOAS
+      parameters: [{ $ref: "#/components/parameters/Version" }]
+      responses:
+        "200": { description: Enlaces a los recursos disponibles }
+  /api/reservas:
+    get:
+      tags: [Reservas]
+      summary: Consultar reservas por placa del vehículo o por número de reserva (paginado)
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - { name: placa, in: query, schema: { type: string, example: ABC123 }, description: Placa del vehículo }
+        - { name: numero, in: query, schema: { type: string, example: RSV-000001 }, description: Número de reserva }
+        - name: estado
+          in: query
+          schema: { $ref: "#/components/schemas/Estado" }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200":
+          description: Página de reservas
+          headers:
+            X-API-Version: { $ref: "#/components/headers/XApiVersion" }
+            X-Cache: { $ref: "#/components/headers/XCache" }
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PaginaReservas" }
+        "400": { $ref: "#/components/responses/Problema" }
+        "404": { $ref: "#/components/responses/Problema" }
+    post:
+      tags: [Reservas]
+      summary: Registrar una nueva reserva
+      description: |
+        Si no se envía `placa`, el sistema asigna el vehículo disponible mejor calificado del tipo pedido.
+        La tarifa y la distancia se calculan en el servidor. La reserva nace en estado `PENDIENTE`.
+      parameters: [{ $ref: "#/components/parameters/Version" }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NuevaReserva" }
+      responses:
+        "201":
+          description: Reserva creada
+          headers:
+            Location: { description: URL del recurso creado, schema: { type: string } }
+            X-API-Version: { $ref: "#/components/headers/XApiVersion" }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ReservaV1"
+                  - $ref: "#/components/schemas/ReservaV2"
+        "400": { $ref: "#/components/responses/Problema" }
+        "409": { $ref: "#/components/responses/Problema" }
+        "415": { $ref: "#/components/responses/Problema" }
+        "422": { $ref: "#/components/responses/Problema" }
+  /api/reservas/{numeroReserva}:
+    parameters:
+      - $ref: "#/components/parameters/Version"
+      - { name: numeroReserva, in: path, required: true, schema: { type: string, example: RSV-000001 } }
+    get:
+      tags: [Reservas]
+      summary: Consultar el estado de una reserva por su número
+      responses:
+        "200":
+          description: Reserva (v1 plana, v2 anidada)
+          headers:
+            X-Cache: { $ref: "#/components/headers/XCache" }
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ReservaV1"
+                  - $ref: "#/components/schemas/ReservaV2"
+        "400": { $ref: "#/components/responses/Problema" }
+        "404": { $ref: "#/components/responses/Problema" }
+    patch:
+      tags: [Reservas]
+      summary: Cambiar el estado de una reserva (siga los enlaces HATEOAS)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [estado]
+              properties: { estado: { $ref: "#/components/schemas/Estado" } }
+      responses:
+        "200": { description: Reserva actualizada }
+        "404": { $ref: "#/components/responses/Problema" }
+        "409": { $ref: "#/components/responses/Problema" }
+        "415": { $ref: "#/components/responses/Problema" }
+        "422": { $ref: "#/components/responses/Problema" }
+  /api/vehiculos:
+    get:
+      tags: [Vehículos]
+      summary: Listar vehículos (paginado)
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - name: tipoServicio
+          in: query
+          schema: { $ref: "#/components/schemas/TipoServicio" }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/Size"
+      responses:
+        "200": { description: Página de vehículos }
+        "400": { $ref: "#/components/responses/Problema" }
+  /api/vehiculos/{placa}:
+    get:
+      tags: [Vehículos]
+      summary: Consultar un vehículo por placa
+      parameters:
+        - $ref: "#/components/parameters/Version"
+        - { name: placa, in: path, required: true, schema: { type: string, example: ABC123 } }
+      responses:
+        "200": { description: Vehículo }
+        "400": { $ref: "#/components/responses/Problema" }
+        "404": { $ref: "#/components/responses/Problema" }
+components:
+  parameters:
+    Version:
+      name: X-API-Version
+      in: header
+      required: false
+      schema: { type: string, enum: ["1", "2"], default: "1" }
+      description: Versión de la API (Custom Request Header)
+    Page: { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+    Size: { name: size, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 10 } }
+  headers:
+    XApiVersion: { description: Versión con la que se atendió la petición, schema: { type: string } }
+    XCache: { description: HIT si vino de Redis, MISS si vino de la BD, schema: { type: string, enum: [HIT, MISS] } }
+  responses:
+    Problema:
+      description: Error (RFC 9457 Problem Details)
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problema" }
+  schemas:
+    Estado: { type: string, enum: [PENDIENTE, CONFIRMADA, CONDUCTOR_EN_CAMINO, EN_CURSO, FINALIZADA, CANCELADA] }
+    TipoServicio: { type: string, enum: [ECONOMICO, CONFORT, XL] }
+    MetodoPago: { type: string, enum: [EFECTIVO, TARJETA, NEQUI, DAVIPLATA] }
+    Punto:
+      type: object
+      required: [direccion, lat, lng]
+      properties:
+        direccion: { type: string, example: "Universidad de Antioquia, Medellín" }
+        lat: { type: number, example: 6.2677 }
+        lng: { type: number, example: -75.5688 }
+    NuevaReserva:
+      type: object
+      required: [tipoServicio, metodoPago, pasajero, origen, destino, fechaHoraRecogida, numPasajeros]
+      properties:
+        placa: { type: string, example: ABC123, description: Opcional. Si se omite se asigna un vehículo. }
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        metodoPago: { $ref: "#/components/schemas/MetodoPago" }
+        pasajero:
+          type: object
+          required: [nombre, documento, telefono]
+          properties:
+            nombre: { type: string, example: Laura Gómez }
+            documento: { type: string, example: "1037654321" }
+            telefono: { type: string, example: "3001234567" }
+            email: { type: string, format: email, example: laura@correo.com }
+        origen: { $ref: "#/components/schemas/Punto" }
+        destino:
+          allOf: [{ $ref: "#/components/schemas/Punto" }]
+          example: { direccion: "Aeropuerto José María Córdova, Rionegro", lat: 6.1645, lng: -75.4231 }
+        fechaHoraRecogida: { type: string, format: date-time, example: "2026-12-15T08:30:00-05:00" }
+        numPasajeros: { type: integer, minimum: 1, maximum: 8, example: 2 }
+        observaciones: { type: string, maxLength: 300, example: Llevo una maleta grande }
+    Link:
+      type: object
+      properties:
+        href: { type: string }
+        method: { type: string }
+        templated: { type: boolean }
+    ReservaV1:
+      type: object
+      properties:
+        numeroReserva: { type: string }
+        estado: { $ref: "#/components/schemas/Estado" }
+        placa: { type: string }
+        conductor: { type: string }
+        pasajeroNombre: { type: string }
+        pasajeroTelefono: { type: string }
+        origen: { type: string }
+        destino: { type: string }
+        fechaHoraRecogida: { type: string, format: date-time }
+        numPasajeros: { type: integer }
+        tipoServicio: { $ref: "#/components/schemas/TipoServicio" }
+        metodoPago: { $ref: "#/components/schemas/MetodoPago" }
+        tarifaEstimada: { type: number }
+        creadaEn: { type: string, format: date-time }
+        _links: { type: object, additionalProperties: { $ref: "#/components/schemas/Link" } }
+    ReservaV2:
+      type: object
+      properties:
+        numeroReserva: { type: string }
+        estado: { type: object, properties: { codigo: { $ref: "#/components/schemas/Estado" }, descripcion: { type: string } } }
+        pasajero: { type: object }
+        ruta: { type: object }
+        recogida: { type: object }
+        servicio: { type: object }
+        tarifa: { type: object, properties: { valor: { type: number }, moneda: { type: string } } }
+        auditoria: { type: object }
+        _embedded: { type: object, properties: { vehiculo: { type: object } } }
+        _links: { type: object, additionalProperties: { $ref: "#/components/schemas/Link" } }
+    PaginaReservas:
+      type: object
+      properties:
+        _embedded: { type: object, properties: { reservas: { type: array, items: { type: object } } } }
+        page:
+          type: object
+          properties:
+            number: { type: integer }
+            size: { type: integer }
+            totalElements: { type: integer }
+            totalPages: { type: integer }
+        _links: { type: object, additionalProperties: { $ref: "#/components/schemas/Link" } }
+    Problema:
+      type: object
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string }
+        requestId: { type: string }
+        errores: { type: array, items: { type: object, properties: { campo: { type: string }, mensaje: { type: string } } } }
