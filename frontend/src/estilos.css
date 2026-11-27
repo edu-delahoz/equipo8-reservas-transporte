@@ -1,0 +1,50 @@
+:root {
+  --fondo: #f5f6f8; --tarjeta: #fff; --texto: #1d2330; --suave: #667085; --borde: #e3e6eb;
+  --primario: #0b6e4f; --peligro: #c2410c; --bien: #e7f6ee; --mal: #fdecea;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; color: var(--texto); background: var(--fondo);
+}
+* { box-sizing: border-box; }
+body { margin: 0; }
+.app { max-width: 1150px; margin: 0 auto; padding: 16px; }
+.cabecera { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: 1.6rem; }
+.sub { margin: 4px 0 0; color: var(--suave); }
+.version { display: flex; flex-direction: column; font-size: .8rem; color: var(--suave); gap: 4px; }
+.pestanas { display: flex; gap: 8px; margin: 20px 0 12px; border-bottom: 1px solid var(--borde); flex-wrap: wrap; align-items: end; }
+.pestanas button { background: none; border: none; padding: 10px 14px; cursor: pointer; font-size: 1rem; color: var(--suave); border-bottom: 3px solid transparent; }
+.pestanas button.activa { color: var(--primario); border-color: var(--primario); font-weight: 600; }
+.enlaces { margin-left: auto; display: flex; gap: 14px; padding-bottom: 10px; }
+.enlaces a { color: var(--primario); font-size: .9rem; }
+.barra-estado { display: flex; gap: 18px; flex-wrap: wrap; padding: 8px 12px; border-radius: 8px; font-size: .85rem; margin-bottom: 14px; font-family: ui-monospace, monospace; }
+.barra-estado.bien { background: var(--bien); } .barra-estado.mal { background: var(--mal); }
+select, input { padding: 8px 10px; border: 1px solid var(--borde); border-radius: 6px; font-size: .95rem; background: #fff; width: 100%; }
+button { padding: 8px 14px; border-radius: 6px; border: 1px solid var(--primario); background: var(--primario); color: #fff; cursor: pointer; font-size: .9rem; }
+button:disabled { opacity: .4; cursor: default; }
+button.peligro { background: #fff; color: var(--peligro); border-color: var(--peligro); }
+.buscador { display: grid; grid-template-columns: 220px 1fr auto; gap: 8px; margin-bottom: 14px; }
+.meta { color: var(--suave); font-size: .9rem; }
+.grilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
+.tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 10px; padding: 14px; }
+.fila { display: flex; justify-content: space-between; align-items: center; }
+.desc { margin: 6px 0 0; color: var(--suave); font-size: .85rem; }
+dl { display: grid; grid-template-columns: 90px 1fr; gap: 4px 8px; margin: 10px 0 0; font-size: .88rem; }
+dt { color: var(--suave); } dd { margin: 0; }
+.estado { font-size: .72rem; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #eef; }
+.e-PENDIENTE { background: #fff4d6; color: #8a5a00; } .e-CONFIRMADA { background: #dbeafe; color: #1e40af; }
+.e-CONDUCTOR_EN_CAMINO { background: #ede9fe; color: #5b21b6; } .e-EN_CURSO { background: #cffafe; color: #155e75; }
+.e-FINALIZADA { background: #dcfce7; color: #166534; } .e-CANCELADA { background: #fee2e2; color: #991b1b; }
+.acciones { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px dashed var(--borde); }
+.acciones small { color: var(--suave); }
+.paginacion { display: flex; gap: 8px; justify-content: center; margin: 16px 0; }
+.problema { background: var(--mal); border-left: 4px solid var(--peligro); padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; }
+.problema p { margin: 4px 0; }
+.json { margin-top: 16px; } .json pre { background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; overflow: auto; max-height: 420px; font-size: .78rem; }
+.dos-columnas { display: grid; grid-template-columns: minmax(320px, 1fr) 1fr; gap: 20px; align-items: start; }
+.formulario fieldset { border: 1px solid var(--borde); border-radius: 10px; background: var(--tarjeta); margin: 0 0 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 12px; }
+.formulario legend { font-weight: 600; padding: 0 6px; }
+.formulario label { display: flex; flex-direction: column; gap: 4px; font-size: .82rem; color: var(--suave); }
+.exito { color: var(--primario); font-weight: 600; }
+@media (max-width: 760px) {
+  .dos-columnas, .buscador, .formulario fieldset { grid-template-columns: 1fr; }
+  .enlaces { margin-left: 0; }
+}
