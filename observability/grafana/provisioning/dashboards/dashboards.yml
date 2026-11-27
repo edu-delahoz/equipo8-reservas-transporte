@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: reservas
+    folder: Equipo 8
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
